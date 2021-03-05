@@ -15,8 +15,8 @@
   },
   "keywords": [],
   "engines": {
-       "node": "12.20.1"
-     },
+    "node": "v14.15.4"
+  },
   "author": "Cheyenne McMahon <orlandu8@gmail.com>",
   "license": "MIT",
   "dependencies": {
