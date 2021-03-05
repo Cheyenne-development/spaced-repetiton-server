@@ -1,4 +1,10 @@
-# Spaced repetition API!
+# Spaced repetition Capstone API!
+
+Live version: https://spaced-repetition-client-opal.vercel.app/
+Demo Username: admin
+Demo Password: pass
+Associated API:
+Client: https://github.com/GeorgeLuther/spaced-repetition-api
 
 ## Local dev setup
 
