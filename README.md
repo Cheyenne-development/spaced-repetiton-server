@@ -4,7 +4,7 @@
 * Demo Username: admin
 * Demo Password: pass
 * Associated API:
- - Client: https://github.com/GeorgeLuther/spaced-repetition-api
+  - Client: https://github.com/GeorgeLuther/spaced-repetition-api
 
 ## Local dev setup
 
