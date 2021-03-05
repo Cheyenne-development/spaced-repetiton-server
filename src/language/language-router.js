@@ -1,14 +1,14 @@
-const express = require('express');
-const LanguageService = require('./language-service');
-const { requireAuth } = require('../middleware/jwt-auth');
+const express = require("express");
+const LanguageService = require("./language-service");
+const { requireAuth } = require("../middleware/jwt-auth");
 
 const languageRouter = express.Router();
-const bodyParser = express.json();
+const jsonBodyParser = express.json();
 
 languageRouter.use(requireAuth).use(async (req, res, next) => {
   try {
     const language = await LanguageService.getUsersLanguage(
-      req.app.get('db'),
+      req.app.get("db"),
       req.user.id
     );
 
@@ -24,10 +24,10 @@ languageRouter.use(requireAuth).use(async (req, res, next) => {
   }
 });
 
-languageRouter.get('/', async (req, res, next) => {
+languageRouter.get("/", async (req, res, next) => {
   try {
     const words = await LanguageService.getLanguageWords(
-      req.app.get('db'),
+      req.app.get("db"),
       req.language.id
     );
 
@@ -41,80 +41,76 @@ languageRouter.get('/', async (req, res, next) => {
   }
 });
 
-languageRouter.get('/head', async (req, res, next) => {
+languageRouter.get("/head", async (req, res, next) => {
   try {
-    const nextPracticeWord = await LanguageService.getNextWord(
-      req.app.get('db'),
-      req.language.head
+    const word = await LanguageService.getLanguageHead(
+      req.app.get("db"),
+      req.language.id
     );
+
     res.json({
-      nextWord: nextPracticeWord.original,
-      wordCorrectCount: nextPracticeWord.correct_count,
-      wordIncorrectCount: nextPracticeWord.incorrect_count,
-      totalScore: req.language.total_score,
+      nextWord: word.original,
+      wordCorrectCount: word.correct_count,
+      wordIncorrectCount: word.incorrect_count,
+      totalScore: word.total_score,
     });
-  } catch (e) {
-    next(e);
+  } catch (error) {
+    next(error);
   }
 });
 
-languageRouter.route('/guess').post(bodyParser, async (req, res, next) => {
-  if (!Object.keys(req.body).includes('guess')) {
-    return res.status(400).json({
-      error: `Missing 'guess' in request body`,
-    });
-  }
+languageRouter.post("/guess", jsonBodyParser, async (req, res, next) => {
+  try {
+    const { guess } = req.body;
 
-  const words = await LanguageService.getLanguageWords(
-    req.app.get('db'),
-    req.language.id
-  );
-
-  const newWordList = LanguageService.populateWords(
-    req.app.get('db'),
-    req.language,
-    words
-  );
-
-  console.dir(newWordList);
-
-  if (req.body.guess.toLowerCase() === newWordList.head.value.translation) {
-    newWordList.head.value.correct_count++;
-    newWordList.head.value.memory_value =
-      newWordList.head.value.memory_value * 2 >= newWordList.listNodes().length
-        ? newWordList.listNodes().length - 1
-        : newWordList.head.value.memory_value * 2;
-    newWordList.total_score++;
-    newWordList.moveHead(newWordList.head.value.memory_value);
-
-    LanguageService.persistLL(req.app.get('db'), newWordList).then(() => {
-      res.json({
-        nextWord: newWordList.head.value.original,
-        wordCorrectCount: newWordList.head.value.correct_count,
-        wordIncorrectCount: newWordList.head.value.incorrect_count,
-        totalScore: newWordList.total_score,
-        answer: req.body.guess,
-        isCorrect: true,
+    if (!guess)
+      return res.status(400).json({
+        error: `Missing 'guess' in request body`,
       });
-      next();
-    });
-  } else {
-    newWordList.head.value.incorrect_count++;
-    newWordList.head.value.memory_value = 1;
-    let correct = newWordList.head.value.translation;
-    newWordList.moveHead(newWordList.head.value.memory_value);
 
-    LanguageService.persistLL(req.app.get('db'), newWordList).then(() => {
-      res.json({
-        nextWord: newWordList.head.value.original,
-        totalScore: newWordList.total_score,
-        wordCorrectCount: newWordList.head.value.correct_count,
-        wordIncorrectCount: newWordList.head.value.incorrect_count,
-        answer: correct,
-        isCorrect: false,
-      });
-      next();
+    const words = await LanguageService.getLanguageWords(
+      req.app.get("db"),
+      req.language.id
+    );
+
+    const LL = LanguageService.populateLinkedList(req.language, words);
+
+    const Head = LL.head;
+    const answer = Head.value.translation;
+
+    let isCorrect;
+
+
+    if (guess === answer) {
+      isCorrect = true;
+
+      LL.head.value.memory_value = Number(Head.value.memory_value) * 2;
+
+      LL.head.value.correct_count = Number(LL.head.value.correct_count) + 1;
+
+      LL.total_score = Number(LL.total_score) + 1;
+    } else {
+      isCorrect = false;
+
+      LL.head.value.memory_value = 1;
+
+      LL.head.value.incorrect_count = Number(LL.head.value.incorrect_count) + 1;
+    }
+
+    LL.shiftHead(LL.head.value.memory_value);
+
+    await LanguageService.persistLinkedList(req.app.get("db"), LL);
+
+    res.json({
+      nextWord: LL.head.value.original,
+      wordCorrectCount: LL.head.value.correct_count,
+      wordIncorrectCount: LL.head.value.incorrect_count,
+      totalScore: LL.total_score,
+      answer,
+      isCorrect,
     });
+  } catch (error) {
+    next(error);
   }
 });
 

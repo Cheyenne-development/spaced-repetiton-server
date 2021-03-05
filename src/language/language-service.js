@@ -1,4 +1,4 @@
-const LinkedList = require('../linked-list/LinkedList');
+const { LinkedList } = require('../linked-list/LinkedList');
 
 const LanguageService = {
   getUsersLanguage(db, user_id) {
@@ -14,7 +14,7 @@ const LanguageService = {
       .where('language.user_id', user_id)
       .first();
   },
-
+        
   getLanguageWords(db, language_id) {
     return db
       .from('word')
@@ -30,70 +30,67 @@ const LanguageService = {
       )
       .where({ language_id });
   },
-
-  getNextWord(db, id) {
-    return db('word')
-      .select('id', 'next', 'original', 'correct_count', 'incorrect_count')
-      .where({ id })
+  getLanguageHead(db, language_id) {
+    return db
+      .from('word')
+      .select(
+        'word.id',
+        'word.language_id',
+        'word.original',
+        'word.translation',
+        'word.next',
+        'word.memory_value',
+        'word.correct_count',
+        'word.incorrect_count',
+        'language.total_score'
+      )
+      .leftJoin('language', 'language.head', 'word.id')
+      .where('language.id', language_id)
       .first();
   },
-
-  populateWords(db, lang, words) {
-    const wordList = new LinkedList();
-    wordList.id = lang.id;
-    wordList.name = lang.name;
-    wordList.total_score = lang.total_score;
-
-    let headWord = words.find((word) => word.id === lang.head);
-
-    wordList.insertFirst({
-      id: headWord.id,
-      original: headWord.original,
-      translation: headWord.translation,
-      memory_value: headWord.memory_value,
-      correct_count: headWord.correct_count,
-      incorrect_count: headWord.incorrect_count,
+        
+  populateLinkedList(language, list) {
+    const LL = new LinkedList({
+      id: language.id,
+      name: language.name,
+      total_score: language.total_score,
     });
-    while (headWord.next) {
-      headWord = words.find((word) => word.id === headWord.next);
-      wordList.insertLast({
-        id: headWord.id,
-        original: headWord.original,
-        translation: headWord.translation,
-        memory_value: headWord.memory_value,
-        correct_count: headWord.correct_count,
-        incorrect_count: headWord.incorrect_count,
+        
+    let words = list.find((word) => word.id === language.head);
+        
+    LL.insert({
+      id: words.id,
+      original: words.original,
+      translation: words.translation,
+      memory_value: words.memory_value,
+      correct_count: words.correct_count,
+      incorrect_count: words.incorrect_count,
+    });
+        
+    while (words.next) {
+      words = list.find((word) => word.id === words.next);
+        
+      LL.insert({
+        id: words.id,
+        original: words.original,
+        translation: words.translation,
+        memory_value: words.memory_value,
+        correct_count: words.correct_count,
+        incorrect_count: words.incorrect_count,
       });
     }
-    return wordList;
+        
+    return LL;
   },
-
-  updateWord(db, word) {
-    return db.from('word').where({ id: word.id }).update({
-      memory_value: word.memory_value,
-      correct_count: word.correct_count,
-      incorrect_count: word.incorrect_count,
-    });
-  },
-
-  incrementTotal(db, lang) {
-    return db
-      .from('lang')
-      .where({ id: lang.id })
-      .update({
-        total_score: lang.total_score + 1,
-      });
-  },
-
-  persistLL(db, lang) {
+        
+  persistLinkedList(db, LL) {
     return db.transaction((trx) =>
       Promise.all([
-        db('language').transacting(trx).where('id', lang.id).update({
-          total_score: lang.total_score,
-          head: lang.head.value.id,
+        db('language').transacting(trx).where('id', LL.id).update({
+          total_score: LL.total_score,
+          head: LL.head.value.id,
         }),
-
-        ...lang.forEach((node) =>
+        ...LL.map((node) =>
           db('word')
             .transacting(trx)
             .where('id', node.value.id)
@@ -108,5 +105,6 @@ const LanguageService = {
     );
   },
 };
-
+        
 module.exports = LanguageService;
+        
