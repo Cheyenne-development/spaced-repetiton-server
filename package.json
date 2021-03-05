@@ -12,7 +12,10 @@
     "deploy": "git push heroku master"
   },
   "keywords": [],
-  "author": "Tom `tomatao` HT <tomht@thinkful.com>",
+  "engines": {
+       "node": "10.11.0"
+     },
+  "author": "Cheyenne McMahon <orlandu8@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
