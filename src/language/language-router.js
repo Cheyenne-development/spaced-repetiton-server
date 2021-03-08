@@ -81,7 +81,7 @@ languageRouter.post("/guess", jsonBodyParser, async (req, res, next) => {
     let isCorrect;
 
 
-    if (guess === answer) {
+    if (guess.toLowerCase() === answer) {
       isCorrect = true;
 
       LL.head.value.memory_value = Number(Head.value.memory_value) * 2;
